@@ -1,0 +1,17 @@
+name = "hermes-calendar-reminders"
+main = "cloud/worker.js"
+compatibility_date = "2026-08-24"
+account_id = "39bc78d5968b954dfeb81cc5933a028c"
+
+routes = [
+  { pattern = "huadaisi.cn", custom_domain = true },
+  { pattern = "www.huadaisi.cn", custom_domain = true }
+]
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hermes-calendar-reminders-db"
+database_id = "1d9a4a57-e045-434d-bb26-6ea8823e2d16"
