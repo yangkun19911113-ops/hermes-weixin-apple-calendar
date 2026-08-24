@@ -153,12 +153,25 @@ async function loadCalendars() {
     const response = await fetch("/api/calendars");
     const data = await response.json();
     calendarSelect.innerHTML = "";
-    data.calendars.forEach((name) => {
+    const calendars = (data.calendars || []).filter((calendar) => calendar.writable);
+    calendars.forEach((calendar) => {
       const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
+      option.value = calendar.name;
+      option.textContent = `${calendar.name}${calendar.sync_capable ? " · 同步" : " · 本地"}`;
+      option.disabled = !calendar.sync_capable;
       calendarSelect.appendChild(option);
     });
+    const firstSync = [...calendarSelect.options].find((option) => !option.disabled);
+    if (firstSync) {
+      firstSync.selected = true;
+    } else {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "未发现 iCloud 同步日历";
+      calendarSelect.appendChild(option);
+      syncButton.disabled = true;
+      showToast("先在 macOS 打开 iCloud 日历，才能三端同步");
+    }
   } catch (error) {
     calendarSelect.innerHTML = `<option>日历不可用</option>`;
     showToast(error.message);

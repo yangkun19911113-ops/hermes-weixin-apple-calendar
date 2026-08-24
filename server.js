@@ -56,7 +56,7 @@ function runCommand(command, args) {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
-        reject(new Error(stderr.trim() || `${command} exited with ${code}`));
+        reject(new Error(stdout.trim() || stderr.trim() || `${command} exited with ${code}`));
       }
     });
   });
@@ -96,67 +96,22 @@ async function scheduleWeixinReminder(event, uid) {
 }
 
 async function listCalendars() {
-  const script = `
-tell application "Calendar"
-  set calendarNames to {}
-  repeat with c in calendars
-    set end of calendarNames to name of c
-  end repeat
-  set AppleScript's text item delimiters to linefeed
-  return calendarNames as text
-end tell`;
-  const output = await runOsascript(["-e", script]);
-  return output.split("\n").map((name) => name.trim()).filter(Boolean);
+  const output = await runCommand("swift", ["scripts/eventkit-bridge.swift", "calendars"]);
+  const parsed = JSON.parse(output);
+  if (!parsed.ok) {
+    throw new Error(parsed.error || "Unable to list calendars");
+  }
+  return parsed.calendars || [];
 }
 
 async function createCalendarEvent(payload) {
-  const script = `
-on run argv
-  set calName to item 1 of argv
-  set eventTitle to item 2 of argv
-  set eventNotes to item 3 of argv
-  set yyyy to item 4 of argv as integer
-  set mm to item 5 of argv as integer
-  set dd to item 6 of argv as integer
-  set hh to item 7 of argv as integer
-  set mi to item 8 of argv as integer
-  set durationMinutes to item 9 of argv as integer
-
-  set startDate to current date
-  set year of startDate to yyyy
-  set month of startDate to mm
-  set day of startDate to dd
-  set hours of startDate to hh
-  set minutes of startDate to mi
-  set seconds of startDate to 0
-  set endDate to startDate + (durationMinutes * minutes)
-
-  tell application "Calendar"
-    set targetCalendar to first calendar whose name is calName
-    set newEvent to make new event at end of events of targetCalendar with properties {summary:eventTitle, start date:startDate, end date:endDate, description:eventNotes}
-    make new display alarm at end of display alarms of newEvent with properties {trigger interval:0}
-    return uid of newEvent
-  end tell
-end run`;
-
-  const { calendar, title, notes, date, time, duration } = payload;
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  const uid = await runOsascript([
-    "-e",
-    script,
-    calendar,
-    title,
-    notes || "",
-    String(year),
-    String(month),
-    String(day),
-    String(hour),
-    String(minute),
-    String(duration)
-  ]);
+  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(payload)]));
+  if (!created.ok) {
+    throw new Error(created.error || "Calendar event creation failed");
+  }
+  const uid = created.uid;
   const weixinReminder = await scheduleWeixinReminder(payload, uid);
-  return { uid, weixinReminder };
+  return { uid, calendar: created.calendar, syncCapable: true, weixinReminder };
 }
 
 function sendJson(res, status, body) {
@@ -192,8 +147,8 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 400, { error: `Missing: ${missing.join(", ")}` });
         return;
       }
-      const { uid, weixinReminder } = await createCalendarEvent(payload);
-      sendJson(res, 200, { ok: true, uid, weixin_reminder: weixinReminder });
+      const { uid, calendar, syncCapable, weixinReminder } = await createCalendarEvent(payload);
+      sendJson(res, 200, { ok: true, uid, calendar, sync_capable: syncCapable, weixin_reminder: weixinReminder });
       return;
     }
 

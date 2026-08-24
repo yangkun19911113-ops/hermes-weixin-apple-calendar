@@ -89,6 +89,14 @@ Hermes 会先返回确认表。你回复：
 
 ## 日历桥接命令
 
+检查 Mac 是否存在可同步到手机的 iCloud/CalDAV 日历：
+
+```bash
+bash scripts/check-sync-calendar.sh
+```
+
+结果里的 `sync_capable: true` 才适合作为三端同步日历。若没有 `sync_capable: true`，请先在 macOS 系统设置里登录 Apple ID 并打开 iCloud 日历。
+
 列出日历：
 
 ```bash

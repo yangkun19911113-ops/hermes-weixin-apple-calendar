@@ -32,6 +32,14 @@ bash scripts/install-hermes-skill.sh
 
 ## Test Calendar Bridge
 
+First check whether the Mac has an iCloud/CalDAV calendar that can sync to iPhone:
+
+```bash
+bash scripts/check-sync-calendar.sh
+```
+
+Use a calendar with `"sync_capable": true` for three-device sync. If none exists, enable iCloud Calendar in macOS System Settings first.
+
 ```bash
 node scripts/calendar-bridge.mjs calendars
 node scripts/calendar-bridge.mjs create --json '{"calendar":"日历","title":"Hermes 测试事件","notes":"创建后可手动删除","date":"2026-08-25","time":"15:00","duration":30}'

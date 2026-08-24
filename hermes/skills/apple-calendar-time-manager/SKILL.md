@@ -39,6 +39,7 @@ Events created by the bridge include:
 
 1. A default Apple Calendar display reminder at the event start time (`trigger interval: 0`).
 2. A one-shot Hermes cron reminder delivered to Weixin at the event start time.
+3. A hard sync guard: the bridge only writes to writable iCloud/CalDAV calendars (`sync_capable: true`). If no sync-capable calendar exists, tell the user to enable iCloud Calendar on the Mac first.
 
 ## Operating Rules
 
@@ -136,7 +137,8 @@ To use the visual board:
 A completed run should have:
 
 1. Calendar list checked.
-2. Proposed blocks confirmed by user.
-3. Apple Calendar write command returned `{ "ok": true }`.
-4. User told which calendar and dates were changed.
-5. User told that every created event includes a start-time Apple Calendar reminder and a Weixin reminder.
+2. Calendar target is sync-capable so Mac, iPhone, and Weixin reminder can work together.
+3. Proposed blocks confirmed by user.
+4. Apple Calendar write command returned `{ "ok": true }`.
+5. User told which calendar and dates were changed.
+6. User told that every created event includes a start-time Apple Calendar reminder and a Weixin reminder.

@@ -46,7 +46,7 @@ function runCommand(command, args) {
       if (code === 0) {
         resolve(stdout.trim());
       } else {
-        reject(new Error(stderr.trim() || `${command} exited with ${code}`));
+        reject(new Error(stdout.trim() || stderr.trim() || `${command} exited with ${code}`));
       }
     });
   });
@@ -91,151 +91,54 @@ async function scheduleWeixinReminder(event, uid) {
 }
 
 async function listCalendars() {
-  const script = `
-tell application "Calendar"
-  set calendarNames to {}
-  repeat with c in calendars
-    set end of calendarNames to name of c
-  end repeat
-  set AppleScript's text item delimiters to linefeed
-  return calendarNames as text
-end tell`;
-  const output = await runOsascript(["-e", script]);
-  printJson({ calendars: output.split("\n").map((name) => name.trim()).filter(Boolean) });
+  const output = await runCommand("swift", ["scripts/eventkit-bridge.swift", "calendars"]);
+  process.stdout.write(`${output}\n`);
 }
 
 async function listEvents(calendar, date) {
-  const script = `
-on run argv
-  set calName to item 1 of argv
-  set yyyy to item 2 of argv as integer
-  set mm to item 3 of argv as integer
-  set dd to item 4 of argv as integer
-  set dayStart to current date
-  set year of dayStart to yyyy
-  set month of dayStart to mm
-  set day of dayStart to dd
-  set hours of dayStart to 0
-  set minutes of dayStart to 0
-  set seconds of dayStart to 0
-  set dayEnd to dayStart + (24 * hours)
-  set rows to {}
-  tell application "Calendar"
-    set targetCalendar to first calendar whose name is calName
-    repeat with e in (events of targetCalendar whose start date is greater than or equal to dayStart and start date is less than dayEnd)
-      set end of rows to (summary of e & "||" & (start date of e as string) & "||" & (end date of e as string) & "||" & uid of e)
-    end repeat
-  end tell
-  set AppleScript's text item delimiters to linefeed
-  return rows as text
-end run`;
-  const [year, month, day] = date.split("-").map(Number);
-  const output = await runOsascript(["-e", script, calendar, String(year), String(month), String(day)]);
-  const events = output
-    .split("\n")
-    .filter(Boolean)
-    .map((row) => {
-      const [title, start, end, uid] = row.split("||");
-      return { title, start, end, uid };
-    });
-  printJson({ calendar, date, events });
+  const args = ["scripts/eventkit-bridge.swift", "events", "--date", date];
+  if (calendar) args.push("--calendar", calendar);
+  const output = await runCommand("swift", args);
+  process.stdout.write(`${output}\n`);
+}
+
+async function createEventRecord(event) {
+  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(event)]));
+  if (!created.ok) {
+    throw new Error(JSON.stringify(created));
+  }
+  const uid = created.uid;
+  const weixinReminder = await scheduleWeixinReminder(event, uid);
+  return { ok: true, uid, calendar: created.calendar, sync_capable: true, weixin_reminder: weixinReminder };
 }
 
 async function createEvent(event) {
-  const script = `
-on run argv
-  set calName to item 1 of argv
-  set eventTitle to item 2 of argv
-  set eventNotes to item 3 of argv
-  set yyyy to item 4 of argv as integer
-  set mm to item 5 of argv as integer
-  set dd to item 6 of argv as integer
-  set hh to item 7 of argv as integer
-  set mi to item 8 of argv as integer
-  set durationMinutes to item 9 of argv as integer
-
-  set startDate to current date
-  set year of startDate to yyyy
-  set month of startDate to mm
-  set day of startDate to dd
-  set hours of startDate to hh
-  set minutes of startDate to mi
-  set seconds of startDate to 0
-  set endDate to startDate + (durationMinutes * minutes)
-
-  tell application "Calendar"
-    set targetCalendar to first calendar whose name is calName
-    set newEvent to make new event at end of events of targetCalendar with properties {summary:eventTitle, start date:startDate, end date:endDate, description:eventNotes}
-    make new display alarm at end of display alarms of newEvent with properties {trigger interval:0}
-    return uid of newEvent
-  end tell
-end run`;
-
-  const [year, month, day] = event.date.split("-").map(Number);
-  const [hour, minute] = event.time.split(":").map(Number);
-  const uid = await runOsascript([
-    "-e",
-    script,
-    event.calendar,
-    event.title,
-    event.notes || "",
-    String(year),
-    String(month),
-    String(day),
-    String(hour),
-    String(minute),
-    String(event.duration || 60)
-  ]);
-  const weixinReminder = await scheduleWeixinReminder(event, uid);
-  printJson({ ok: true, uid, weixin_reminder: weixinReminder });
+  try {
+    printJson(await createEventRecord(event));
+  } catch (error) {
+    try {
+      printJson(JSON.parse(error.message));
+    } catch {
+      printJson({ ok: false, error: error.message });
+    }
+    process.exit(1);
+  }
 }
 
 async function createMany(events) {
   const created = [];
-  for (const event of events) {
-    const [year, month, day] = event.date.split("-").map(Number);
-    const [hour, minute] = event.time.split(":").map(Number);
-    const script = `
-on run argv
-  set calName to item 1 of argv
-  set eventTitle to item 2 of argv
-  set eventNotes to item 3 of argv
-  set yyyy to item 4 of argv as integer
-  set mm to item 5 of argv as integer
-  set dd to item 6 of argv as integer
-  set hh to item 7 of argv as integer
-  set mi to item 8 of argv as integer
-  set durationMinutes to item 9 of argv as integer
-  set startDate to current date
-  set year of startDate to yyyy
-  set month of startDate to mm
-  set day of startDate to dd
-  set hours of startDate to hh
-  set minutes of startDate to mi
-  set seconds of startDate to 0
-  set endDate to startDate + (durationMinutes * minutes)
-  tell application "Calendar"
-    set targetCalendar to first calendar whose name is calName
-    set newEvent to make new event at end of events of targetCalendar with properties {summary:eventTitle, start date:startDate, end date:endDate, description:eventNotes}
-    make new display alarm at end of display alarms of newEvent with properties {trigger interval:0}
-    return uid of newEvent
-  end tell
-end run`;
-    const uid = await runOsascript([
-      "-e",
-      script,
-      event.calendar,
-      event.title,
-      event.notes || "",
-      String(year),
-      String(month),
-      String(day),
-      String(hour),
-      String(minute),
-      String(event.duration || 60)
-    ]);
-    const weixinReminder = await scheduleWeixinReminder(event, uid);
-    created.push({ title: event.title, date: event.date, time: event.time, uid, weixin_reminder: weixinReminder });
+  try {
+    for (const event of events) {
+      const result = await createEventRecord(event);
+      created.push({ title: event.title, date: event.date, time: event.time, ...result });
+    }
+  } catch (error) {
+    try {
+      printJson(JSON.parse(error.message));
+    } catch {
+      printJson({ ok: false, error: error.message });
+    }
+    process.exit(1);
   }
   printJson({ ok: true, created });
 }
