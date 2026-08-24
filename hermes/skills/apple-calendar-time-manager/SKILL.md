@@ -41,6 +41,12 @@ Events created by the bridge include:
 2. A one-shot Hermes cron reminder delivered to Weixin at the event start time.
 3. A hard sync guard: the bridge only writes to writable iCloud/CalDAV calendars (`sync_capable: true`). If no sync-capable calendar exists, tell the user to enable iCloud Calendar on the Mac first.
 
+Reminder policy is mandatory:
+
+1. Every calendar task must include a reminder. A created event without a reminder is a failed run, even if the calendar event itself was written.
+2. If the user does not specify a reminder channel, use Weixin as the default reminder channel.
+3. Use phone Calendar/Reminders wording only when the user explicitly asks for phone-side reminders such as "手机提醒", "备忘录提醒", or "手机日历提醒".
+
 ## Operating Rules
 
 1. Read existing calendar availability before proposing a plan when the user asks for a real schedule.
@@ -53,6 +59,7 @@ Events created by the bridge include:
 8. In Weixin/WeChat, keep replies short, action-oriented, and conversational. Avoid long explanations.
 9. If the input is an empty media message or looks like a bad transcription, say so and ask the user to resend as text or a clearer voice note.
 10. If the user says "明天/今天/这周", resolve it to a concrete date in the reply.
+11. Treat reminders as a hard requirement. Do not ask whether the user wants a reminder; create the Weixin reminder by default unless the user explicitly names another reminder channel.
 
 ## Weixin Workflow
 
@@ -140,5 +147,6 @@ A completed run should have:
 2. Calendar target is sync-capable so Mac, iPhone, and Weixin reminder can work together.
 3. Proposed blocks confirmed by user.
 4. Apple Calendar write command returned `{ "ok": true }`.
-5. User told which calendar and dates were changed.
-6. User told that every created event includes a start-time Apple Calendar reminder and a Weixin reminder.
+5. Weixin reminder creation returned `{ "ok": true }` for every future event, unless the user explicitly requested phone Calendar/Reminders instead.
+6. User told which calendar and dates were changed.
+7. User told that every created event includes the required start-time reminder.
