@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI 时间排程看板</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Codex + Apple Calendar</p>
+          <h1>AI 时间排程看板</h1>
+        </div>
+        <div class="actions">
+          <select id="calendarSelect" aria-label="Apple calendar"></select>
+          <button id="addTaskButton" type="button">添加任务</button>
+          <button id="syncButton" type="button">写入日历</button>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="schedule board">
+        <aside class="inbox">
+          <div class="panel-title">
+            <h2>待安排</h2>
+            <span id="taskCount">0</span>
+          </div>
+          <div id="taskList" class="task-list" aria-label="unscheduled tasks"></div>
+        </aside>
+
+        <section class="calendar-grid" id="calendarGrid" aria-label="weekly schedule"></section>
+      </section>
+
+      <dialog id="taskDialog">
+        <form method="dialog" id="taskForm">
+          <h2>新任务</h2>
+          <label>
+            标题
+            <input id="taskTitle" autocomplete="off" required placeholder="例如：直播选题复盘">
+          </label>
+          <label>
+            说明
+            <textarea id="taskNotes" rows="3" placeholder="背景、产出物、协作人"></textarea>
+          </label>
+          <div class="form-row">
+            <label>
+              时长
+              <select id="taskDuration">
+                <option value="30">30 分钟</option>
+                <option value="60" selected>60 分钟</option>
+                <option value="90">90 分钟</option>
+                <option value="120">120 分钟</option>
+              </select>
+            </label>
+            <label>
+              类型
+              <select id="taskType">
+                <option value="创作">创作</option>
+                <option value="运营">运营</option>
+                <option value="沟通">沟通</option>
+                <option value="复盘">复盘</option>
+              </select>
+            </label>
+          </div>
+          <menu>
+            <button value="cancel" type="button" id="cancelDialogButton">取消</button>
+            <button value="default" type="submit">保存</button>
+          </menu>
+        </form>
+      </dialog>
+
+      <div id="toast" role="status" aria-live="polite"></div>
+    </main>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
