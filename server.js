@@ -105,12 +105,21 @@ async function listCalendars() {
 }
 
 async function createCalendarEvent(payload) {
-  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(payload)]));
+  const event = { ...payload };
+  if (!event.calendar) {
+    const defaultCalendar = (await listCalendars()).find((calendar) => calendar.writable && calendar.sync_capable);
+    if (!defaultCalendar) {
+      throw new Error("No writable iCloud calendar is available");
+    }
+    event.calendar = defaultCalendar.name;
+  }
+
+  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(event)]));
   if (!created.ok) {
     throw new Error(created.error || "Calendar event creation failed");
   }
   const uid = created.uid;
-  const weixinReminder = await scheduleWeixinReminder(payload, uid);
+  const weixinReminder = await scheduleWeixinReminder(event, uid);
   return { uid, calendar: created.calendar, syncCapable: true, weixinReminder };
 }
 
@@ -141,7 +150,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/events") {
       const payload = await readRequestJson(req);
-      const required = ["calendar", "title", "date", "time", "duration"];
+      const required = ["title", "date", "time", "duration"];
       const missing = required.filter((key) => !payload[key]);
       if (missing.length) {
         sendJson(res, 400, { error: `Missing: ${missing.join(", ")}` });
