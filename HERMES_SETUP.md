@@ -7,7 +7,7 @@ This package turns the local schedule board into a Hermes skill.
 1. Install Hermes Agent if `hermes` is not available.
 2. Finish Hermes model login or API provider setup.
 3. Grant macOS Calendar permission when prompted.
-4. Tell Hermes which Apple Calendar to write to, for example `日历`.
+4. Let Hermes use the default sync-capable iCloud/CalDAV calendar, or name a real calendar returned by `calendars` such as `个人`, `工作`, `家庭`, or `Calendar`.
 
 ## Install Hermes
 
@@ -42,7 +42,7 @@ Use a calendar with `"sync_capable": true` for three-device sync. If none exists
 
 ```bash
 node scripts/calendar-bridge.mjs calendars
-node scripts/calendar-bridge.mjs create --json '{"calendar":"日历","title":"Hermes 测试事件","notes":"创建后可手动删除","date":"2026-08-25","time":"15:00","duration":30}'
+node scripts/calendar-bridge.mjs create --json '{"title":"Hermes 测试事件","notes":"创建后可手动删除","date":"2026-08-25","time":"15:00","duration":30}'
 ```
 
 ## Start Board

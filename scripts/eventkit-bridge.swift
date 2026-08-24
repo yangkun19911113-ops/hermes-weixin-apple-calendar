@@ -45,13 +45,45 @@ func calendarRows() -> [[String: Any]] {
     }
 }
 
+let genericCalendarNames: Set<String> = [
+    "日历",
+    "苹果日历",
+    "apple calendar",
+    "calendar",
+    "default",
+    "默认",
+    "默认日历",
+    "icloud",
+    "iCloud"
+]
+
+func preferredSyncCalendar() -> EKCalendar? {
+    let writable = store.calendars(for: .event).filter { $0.allowsContentModifications }
+    let syncCalendars = writable.filter(isSyncCapable)
+    let preferredNames = ["个人", "工作", "家庭", "Calendar"]
+    for preferredName in preferredNames {
+        if let calendar = syncCalendars.first(where: { $0.title == preferredName }) {
+            return calendar
+        }
+    }
+    return syncCalendars.first
+}
+
+func isGenericCalendarName(_ name: String?) -> Bool {
+    guard let value = name?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
+        return true
+    }
+    return genericCalendarNames.contains(value) || genericCalendarNames.contains(value.lowercased())
+}
+
 func selectCalendar(named name: String?) -> EKCalendar? {
     let writable = store.calendars(for: .event).filter { $0.allowsContentModifications }
-    if let name, !name.isEmpty {
-        let named = writable.filter { $0.title == name || $0.calendarIdentifier == name }
+    if !isGenericCalendarName(name), let name {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let named = writable.filter { $0.title == trimmed || $0.calendarIdentifier == trimmed }
         return named.first(where: isSyncCapable) ?? named.first
     }
-    return writable.first(where: isSyncCapable)
+    return preferredSyncCalendar()
 }
 
 func localDate(_ date: String, _ time: String) -> Date? {

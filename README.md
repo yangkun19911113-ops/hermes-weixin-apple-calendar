@@ -106,13 +106,13 @@ node scripts/calendar-bridge.mjs calendars
 查看某天事件：
 
 ```bash
-node scripts/calendar-bridge.mjs events --calendar "日历" --date "2026-08-25"
+node scripts/calendar-bridge.mjs events --date "2026-08-25"
 ```
 
 创建事件：
 
 ```bash
-node scripts/calendar-bridge.mjs create --json '{"calendar":"日历","title":"看产品","notes":"确认产品细节","date":"2026-08-25","time":"09:30","duration":90}'
+node scripts/calendar-bridge.mjs create --json '{"title":"看产品","notes":"确认产品细节","date":"2026-08-25","time":"09:30","duration":90}'
 ```
 
 创建事件时会自动：
@@ -120,6 +120,7 @@ node scripts/calendar-bridge.mjs create --json '{"calendar":"日历","title":"�
 - 写入 Apple 日历
 - 添加 Apple 日历开始时弹窗提醒
 - 创建一次性 Hermes cron，到点发微信提醒
+- 若没有指定具体日历，或传了“日历/苹果日历”这类泛称，会自动选择可写、可同步的 iCloud/CalDAV 日历，并在结果里返回真实日历名。
 
 提醒规则：
 

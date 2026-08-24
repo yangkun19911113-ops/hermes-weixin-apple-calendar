@@ -30,9 +30,9 @@ Calendar bridge:
 
 ```bash
 node scripts/calendar-bridge.mjs calendars
-node scripts/calendar-bridge.mjs events --calendar "日历" --date "2026-08-25"
-node scripts/calendar-bridge.mjs create --json '{"calendar":"日历","title":"复盘","notes":"说明","date":"2026-08-25","time":"15:00","duration":60}'
-node scripts/calendar-bridge.mjs create-many --json '[{"calendar":"日历","title":"复盘","notes":"说明","date":"2026-08-25","time":"15:00","duration":60}]'
+node scripts/calendar-bridge.mjs events --date "2026-08-25"
+node scripts/calendar-bridge.mjs create --json '{"title":"复盘","notes":"说明","date":"2026-08-25","time":"15:00","duration":60}'
+node scripts/calendar-bridge.mjs create-many --json '[{"title":"复盘","notes":"说明","date":"2026-08-25","time":"15:00","duration":60}]'
 ```
 
 Events created by the bridge include:
@@ -40,6 +40,7 @@ Events created by the bridge include:
 1. A default Apple Calendar display reminder at the event start time (`trigger interval: 0`).
 2. A one-shot Hermes cron reminder delivered to Weixin at the event start time.
 3. A hard sync guard: the bridge only writes to writable iCloud/CalDAV calendars (`sync_capable: true`). If no sync-capable calendar exists, tell the user to enable iCloud Calendar on the Mac first.
+4. If no specific calendar is provided, or the calendar is a generic name such as "日历", the bridge must auto-select a writable sync-capable iCloud/CalDAV calendar.
 
 Reminder policy is mandatory:
 
@@ -60,6 +61,7 @@ Reminder policy is mandatory:
 9. If the input is an empty media message or looks like a bad transcription, say so and ask the user to resend as text or a clearer voice note.
 10. If the user says "明天/今天/这周", resolve it to a concrete date in the reply.
 11. Treat reminders as a hard requirement. Do not ask whether the user wants a reminder; create the Weixin reminder by default unless the user explicitly names another reminder channel.
+12. Never claim the target calendar is "日历" unless the bridge returned a real calendar with that exact name. Report the actual `calendar` value returned by the write command, such as "个人", "工作", "家庭", or "Calendar".
 
 ## Weixin Workflow
 
@@ -110,7 +112,6 @@ Example JSON:
 ```json
 [
   {
-    "calendar": "日历",
     "title": "整理本周内容选题",
     "notes": "输出：一周内容主题与发布日期",
     "date": "2026-08-25",
@@ -148,5 +149,5 @@ A completed run should have:
 3. Proposed blocks confirmed by user.
 4. Apple Calendar write command returned `{ "ok": true }`.
 5. Weixin reminder creation returned `{ "ok": true }` for every future event, unless the user explicitly requested phone Calendar/Reminders instead.
-6. User told which calendar and dates were changed.
+6. User told the exact calendar returned by the bridge and dates changed.
 7. User told that every created event includes the required start-time reminder.

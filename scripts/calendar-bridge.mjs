@@ -56,6 +56,11 @@ function localStartDate(event) {
   return new Date(`${event.date}T${event.time}:00`);
 }
 
+function isGenericCalendarName(name) {
+  if (!name) return true;
+  return ["日历", "苹果日历", "apple calendar", "calendar", "default", "默认", "默认日历", "icloud"].includes(String(name).trim().toLowerCase());
+}
+
 async function scheduleWeixinReminder(event, uid) {
   const start = localStartDate(event);
   const delayMinutes = Math.ceil((start.getTime() - Date.now()) / 60000);
@@ -103,12 +108,17 @@ async function listEvents(calendar, date) {
 }
 
 async function createEventRecord(event) {
-  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(event)]));
+  const payload = { ...event };
+  if (isGenericCalendarName(payload.calendar)) {
+    delete payload.calendar;
+  }
+
+  const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(payload)]));
   if (!created.ok) {
     throw new Error(JSON.stringify(created));
   }
   const uid = created.uid;
-  const weixinReminder = await scheduleWeixinReminder(event, uid);
+  const weixinReminder = await scheduleWeixinReminder(payload, uid);
   return { ok: true, uid, calendar: created.calendar, sync_capable: true, weixin_reminder: weixinReminder };
 }
 
@@ -147,8 +157,8 @@ function usage() {
   printJson({
     commands: [
       "calendars",
-      "events --calendar 日历 --date 2026-08-25",
-      "create --json '{...}'",
+      "events --date 2026-08-25",
+      "create --json '{\"title\":\"复盘\",\"date\":\"2026-08-25\",\"time\":\"15:00\",\"duration\":60}'",
       "create-many --json '[...]'"
     ]
   });

@@ -106,12 +106,9 @@ async function listCalendars() {
 
 async function createCalendarEvent(payload) {
   const event = { ...payload };
-  if (!event.calendar) {
-    const defaultCalendar = (await listCalendars()).find((calendar) => calendar.writable && calendar.sync_capable);
-    if (!defaultCalendar) {
-      throw new Error("No writable iCloud calendar is available");
-    }
-    event.calendar = defaultCalendar.name;
+  const genericCalendarNames = new Set(["日历", "苹果日历", "apple calendar", "calendar", "default", "默认", "默认日历", "icloud"]);
+  if (!event.calendar || genericCalendarNames.has(String(event.calendar).trim().toLowerCase())) {
+    delete event.calendar;
   }
 
   const created = JSON.parse(await runCommand("swift", ["scripts/eventkit-bridge.swift", "create", "--json", JSON.stringify(event)]));
