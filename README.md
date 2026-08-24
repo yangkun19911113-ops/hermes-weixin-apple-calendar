@@ -23,7 +23,7 @@
 ## 安装
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/yangkun19911113-ops/hermes-weixin-apple-calendar.git
 cd hermes-weixin-apple-calendar
 npm start
 ```
